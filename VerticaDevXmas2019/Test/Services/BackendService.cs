@@ -16,7 +16,7 @@ namespace VerticaDevXmas2019.Services
         {
             var esClient = new ElasticClient(
                 "xmas2019:ZXUtY2VudHJhbC0xLmF3cy5jbG91ZC5lcy5pbyRlZWJjNmYyNzcxM2Q0NTE5OTcwZDc1Yzg2MDUwZTM2MyQyNDFmMzQ3OWNkNzg0ZTUyOTRkODk5OTViMjg0MjAyYg==",
-                new BasicAuthenticationCredentials(participationResponse.ElasticSearchCredentials.UserName, participationResponse.ElasticSearchCredentials.Password));
+                new BasicAuthenticationCredentials(participationResponse.Credentials.UserName, participationResponse.Credentials.Password));
 
             var project = esClient.Get<ChristmasProject>(participationResponse.Id, descriptor => descriptor.Index("santa-trackings"));
 

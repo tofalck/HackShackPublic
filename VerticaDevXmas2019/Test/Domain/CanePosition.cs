@@ -1,18 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using Newtonsoft.Json;
 
 namespace VerticaDevXmas2019.Domain
 {
-    public class CanePosition: ValueObject
+    public class CanePosition: Point
     {
         private const double EarthRadius = 6378.137d; // radius of the earth in kilometers
         private const double OneMeterInDegree = (1 / (2 * Math.PI / 360 * EarthRadius) / 1000);  // 1 meter in degree
-
-        [JsonProperty("lat")]
-        public double Latitude { get; internal set; }
-        [JsonProperty("lon")]
-        public double Longitude { get; internal set; }
 
         public CanePosition CalculateCurrentPosition(IEnumerable<SantaMovement> santaMovements)
         {
