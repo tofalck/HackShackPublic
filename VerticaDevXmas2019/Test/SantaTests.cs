@@ -28,17 +28,28 @@ namespace VerticaDevXmas2019
 
             using (var documentClient = new DocumentClient(new Uri("https://xmas2019.documents.azure.com:443/"), santaRescueResponse.Token))
             {
-                var reindeerRescueLocations = santaRescueResponse.SantaZones.Select(zone => documentClient.CreateDocumentQuery<ReindeerQueryResponseObject>(UriFactory.CreateDocumentCollectionUri("World", "Objects"), new SqlQuerySpec()
+                var reindeerRescueLocations = santaRescueResponse.SantaZones
+                    .Select(zone => documentClient.CreateDocumentQuery<ReindeerQueryResponseObject>(
+                        UriFactory.CreateDocumentCollectionUri("World", "Objects"),
+                        new SqlQuerySpec()
                         {
                             QueryText = "SELECT o.id, o.name, o.location, o.countryCode, @radius as radius, ST_DISTANCE(o.location, {'type': 'Point', 'coordinates':[@lon, @lat]}) as dist FROM Objects o WHERE o.countryCode = @partitionKey AND o.name = @name AND ST_DISTANCE(o.location, {'type': 'Point', 'coordinates':[@lon, @lat]}) <= @radius",
-                            Parameters = new SqlParameterCollection(new[] {new SqlParameter("@partitionKey", zone.CountryCode), new SqlParameter("@name", zone.Reindeer), new SqlParameter("@lat", zone.Center.Latitude), new SqlParameter("@lon", zone.Center.Longitude), new SqlParameter("@radius", zone.Radius.ValueInMeters),})
+                            Parameters = new SqlParameterCollection(new[]
+                            {
+                                new SqlParameter("@partitionKey", zone.CountryCode),
+                                new SqlParameter("@name", zone.Reindeer),
+                                new SqlParameter("@lat", zone.Center.Latitude),
+                                new SqlParameter("@lon", zone.Center.Longitude),
+                                new SqlParameter("@radius", zone.Radius.ValueInMeters),
+                            })
                         }).AsEnumerable().SingleOrDefault())
                     .Where(reindeerQueryResponseObject => reindeerQueryResponseObject != null).Select(o => new ReindeerRescueLocation()
                     {
                         Name = o.Name,
                         //NB: GeoJSON use lon/lat instead of lat/lon...
                         Position = new Point() { Latitude = o.Location.Coordinates[1], Longitude = o.Location.Coordinates[0] }
-                    }).ToArray();
+                    })
+                    .ToArray();
 
                 reindeerRescueLocations.Distinct().Count().Should().Be(8);
 
@@ -47,6 +58,7 @@ namespace VerticaDevXmas2019
                     Id = project.Id,
                     Locations = reindeerRescueLocations
                 });
+
                 postResponse.Should().NotBeNull();
                 postResponse.Message.Should().StartWith("Good job");
             }
@@ -79,7 +91,16 @@ namespace VerticaDevXmas2019
 
                     foreach (var zone in sut.SantaZones)
                     {
-                        zone.Reindeer.Should().BeOneOf(new[] { "Cupid", "Comet", "Vixen", "Prancer", "Blitzen", "Dancer", "Donner", "Dasher" });
+                        zone.Reindeer.Should().BeOneOf(new[]
+                            {
+                                "Cupid",
+                                "Comet",
+                                "Vixen",
+                                "Prancer",
+                                "Blitzen",
+                                "Dancer",
+                                "Donner",
+                                "Dasher" });
                         zone.CountryCode.Should().NotBeNullOrEmpty();
                         zone.CityName.Should().NotBeNullOrEmpty();
                         Math.Abs(zone.Center.Latitude).Should().BeGreaterThan(0);
@@ -140,7 +161,7 @@ namespace VerticaDevXmas2019
                     Value = 7500
                 },
             });
-            
+
             Math.Abs(sut.Latitude - 71.572192407382).Should().BeLessThan(0.0000000000001, sut.Latitude.ToJson());
             Math.Abs(sut.Longitude - -50.9050972077072).Should().BeLessThan(0.0000000000001, sut.Longitude.ToJson());
         }
@@ -162,14 +183,15 @@ namespace VerticaDevXmas2019
             response.Credentials.Password.Should().NotBeNullOrEmpty();
         }
 
-        [Test(Description = "From mailing with Brian Holmgård Kristensen. Put coordinates in https://mobisoftinfotech.com/tools/plot-multiple-points-on-map/")]
+        [Test(Description = "From mailing with Brian Holmgård Kristensen. " +
+                            "Put coordinates in https://mobisoftinfotech.com/tools/plot-multiple-points-on-map/")]
         public void Brian_VerticaSquare_ShouldSucceed()
         {
             var endPosition = new CanePosition()
-                {
-                    Latitude = 55.6760968,
-                    Longitude = 12.568337100000008,
-                }.Dump("Start")
+            {
+                Latitude = 55.6760968,
+                Longitude = 12.568337100000008,
+            }.Dump("Start")
                 .CalculateCurrentPosition(new[]{
                     new SantaMovement()
                     {
