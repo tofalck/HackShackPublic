@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using FluentAssertions;
@@ -9,7 +7,6 @@ using VerticaDevXmas2019.Domain;
 using VerticaDevXmas2019.Services;
 using Microsoft.Azure.Documents;
 using Microsoft.Azure.Documents.Client;
-using Microsoft.Azure.Documents.Linq;
 
 namespace VerticaDevXmas2019
 {
@@ -21,61 +18,34 @@ namespace VerticaDevXmas2019
         {
             var backendService = new BackendService();
 
-            var participationResponse = await backendService.GetParticipationResponse();
-
-            var project = backendService.GetChristmasProject(participationResponse);
-
-            var canePosition = project.InitialCanePosition.CalculateCurrentPosition(project.SantaMovements);
+            var project = backendService.GetChristmasProject(await backendService.GetParticipationResponse());
 
             var santaRescueResponse = await backendService.GetPostResponse<SantaRescueResponse>("/api/santarescue", new SantaRescueRequest()
             {
-                Id = participationResponse.Id,
-                Position = canePosition
+                Id = project.Id,
+                Position = project.InitialCanePosition.CalculateCurrentPosition(project.SantaMovements)
             });
-            var responses = new List<ReindeerQueryResponseObject>();
 
-            using (var documentClient = new Microsoft.Azure.Documents.Client.DocumentClient(new Uri("https://xmas2019.documents.azure.com:443/"), santaRescueResponse.Token))
+            using (var documentClient = new DocumentClient(new Uri("https://xmas2019.documents.azure.com:443/"), santaRescueResponse.Token))
             {
-                foreach (var zone in santaRescueResponse.SantaZones)
-                {
-                    //NB: GeoJSON use lon/lat instead of lat/lon...
-                    var documentQuery = documentClient.CreateDocumentQuery(UriFactory.CreateDocumentCollectionUri("World", "Objects"), new SqlQuerySpec()
-                    {
-                        QueryText = "SELECT o.id, o.name, o.location, o.countryCode, @radius as radius, ST_DISTANCE(o.location, {'type': 'Point', 'coordinates':[@lon, @lat]}) as dist FROM Objects o WHERE o.countryCode = @partitionKey AND o.name = @name AND ST_DISTANCE(o.location, {'type': 'Point', 'coordinates':[@lon, @lat]}) <= @radius",
-                        //AND ST_DISTANCE(o.location, {'type': 'Point', 'coordinates':[@lat, @lon]}) <= @radius
-                        Parameters = new SqlParameterCollection(new[]
+                var reindeerRescueLocations = santaRescueResponse.SantaZones.Select(zone => documentClient.CreateDocumentQuery<ReindeerQueryResponseObject>(UriFactory.CreateDocumentCollectionUri("World", "Objects"), new SqlQuerySpec()
                         {
-                            new SqlParameter("@partitionKey", zone.CountryCode),
-                            new SqlParameter("@name", zone.Reindeer),
-                            new SqlParameter("@lat", zone.Center.Latitude),
-                            new SqlParameter("@lon", zone.Center.Longitude),
-                            new SqlParameter("@radius", zone.Radius.ValueInMeters),
-                        })
-                    }).AsDocumentQuery();
-
-                    while (documentQuery.HasMoreResults)
+                            QueryText = "SELECT o.id, o.name, o.location, o.countryCode, @radius as radius, ST_DISTANCE(o.location, {'type': 'Point', 'coordinates':[@lon, @lat]}) as dist FROM Objects o WHERE o.countryCode = @partitionKey AND o.name = @name AND ST_DISTANCE(o.location, {'type': 'Point', 'coordinates':[@lon, @lat]}) <= @radius",
+                            Parameters = new SqlParameterCollection(new[] {new SqlParameter("@partitionKey", zone.CountryCode), new SqlParameter("@name", zone.Reindeer), new SqlParameter("@lat", zone.Center.Latitude), new SqlParameter("@lon", zone.Center.Longitude), new SqlParameter("@radius", zone.Radius.ValueInMeters),})
+                        }).AsEnumerable().SingleOrDefault())
+                    .Where(reindeerQueryResponseObject => reindeerQueryResponseObject != null).Select(o => new ReindeerRescueLocation()
                     {
-                        var feedResponse = await documentQuery.ExecuteNextAsync<ReindeerQueryResponseObject>();
-                        var reindeer = feedResponse.SingleOrDefault();
-                        if (reindeer == null)
-                            continue;
-                        responses.Add(reindeer);
-                        break;
-                    }
-                }
+                        Name = o.Name,
+                        //NB: GeoJSON use lon/lat instead of lat/lon...
+                        Position = new Point() { Latitude = o.Location.Coordinates[1], Longitude = o.Location.Coordinates[0] }
+                    }).ToArray();
 
-                responses.Count.Should().Be(8);
-                responses.Distinct().Count().Should().Be(8);
+                reindeerRescueLocations.Distinct().Count().Should().Be(8);
 
                 var postResponse = await backendService.GetPostResponse<ReindeerRescueResponse>("/api/reindeerrescue", new ReindeerRescueRequest()
                 {
                     Id = project.Id,
-                    Locations = responses.Select(o => new ReindeerRescueLocation()
-                    {
-                        Name = o.Name,
-                        //NB: GeoJSON use lon/lat instead of lat/lon...
-                        Position = new Point() { Latitude = o.Location.Coordinates[1], Longitude = o.Location.Coordinates[0]}
-                    })
+                    Locations = reindeerRescueLocations
                 });
                 postResponse.Should().NotBeNull();
                 postResponse.Message.Should().StartWith("Good job");
@@ -96,14 +66,10 @@ namespace VerticaDevXmas2019
 
                     var project = backendService.GetChristmasProject(participationResponse);
 
-                    var canePosition = project.InitialCanePosition.CalculateCurrentPosition(project.SantaMovements);
-
-                    Console.WriteLine($"{i + 1}. Lat/Lon: {canePosition.ToJson()}");
-
                     var sut = await backendService.GetPostResponse<SantaRescueResponse>("/api/santarescue", new SantaRescueRequest()
                     {
                         Id = participationResponse.Id,
-                        Position = canePosition
+                        Position = project.InitialCanePosition.CalculateCurrentPosition(project.SantaMovements)
                     });
 
                     //Asserts
@@ -138,9 +104,7 @@ namespace VerticaDevXmas2019
         {
             var backendService = new BackendService();
 
-            var participationResponse = await backendService.GetParticipationResponse();
-
-            var project = backendService.GetChristmasProject(participationResponse);
+            var project = backendService.GetChristmasProject(await backendService.GetParticipationResponse());
 
             project.Id.Should().NotBeNullOrEmpty();
             project.CanePosition.Count.Should().Be(2);
