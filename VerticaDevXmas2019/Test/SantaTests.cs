@@ -18,9 +18,9 @@ namespace VerticaDevXmas2019
         {
             var backendService = new BackendService();
 
-            var project = backendService.GetChristmasProject(await backendService.GetParticipationResponse());
+            var project = await backendService.GetChristmasProjectAsync(await backendService.GetParticipationResponseAsync());
 
-            var santaRescueResponse = await backendService.GetPostResponse<SantaRescueResponse>("/api/santarescue",
+            var santaRescueResponse = await backendService.GetPostResponseAsync<SantaRescueResponse>("/api/santarescue",
                 new SantaRescueRequest()
                 {
                     Id = project.Id,
@@ -58,7 +58,7 @@ namespace VerticaDevXmas2019
 
                 reindeerRescueLocations.Distinct().Count().Should().Be(8);
 
-                var postResponse = await backendService.GetPostResponse<ReindeerRescueResponse>("/api/reindeerrescue",
+                var postResponse = await backendService.GetPostResponseAsync<ReindeerRescueResponse>("/api/reindeerrescue",
                     new ReindeerRescueRequest()
                     {
                         Id = project.Id,
@@ -78,11 +78,11 @@ namespace VerticaDevXmas2019
             var start = DateTime.Now;
             try
             {
-                var participationResponse = await backendService.GetParticipationResponse();
+                var participationResponse = await backendService.GetParticipationResponseAsync();
 
-                var project = backendService.GetChristmasProject(participationResponse);
+                var project = await backendService.GetChristmasProjectAsync(participationResponse);
 
-                var sut = await backendService.GetPostResponse<SantaRescueResponse>("/api/santarescue", new SantaRescueRequest()
+                var sut = await backendService.GetPostResponseAsync<SantaRescueResponse>("/api/santarescue", new SantaRescueRequest()
                 {
                     Id = participationResponse.Id,
                     Position = project.InitialCanePosition.CalculateCurrentPosition(project.SantaMovements)
@@ -127,7 +127,7 @@ namespace VerticaDevXmas2019
         {
             var backendService = new BackendService();
 
-            var project = backendService.GetChristmasProject(await backendService.GetParticipationResponse());
+            var project = await backendService.GetChristmasProjectAsync(await backendService.GetParticipationResponseAsync());
 
             project.Id.Should().NotBeNullOrEmpty();
             project.CanePosition.Count.Should().Be(2);
@@ -175,7 +175,7 @@ namespace VerticaDevXmas2019
             var sut = new BackendService();
 
             //Act
-            var response = await sut.GetParticipationResponse();
+            var response = await sut.GetParticipationResponseAsync();
 
             //Assert
             response.Should().NotBeNull();

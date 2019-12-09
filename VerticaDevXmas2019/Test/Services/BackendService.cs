@@ -12,20 +12,20 @@ namespace VerticaDevXmas2019.Services
 {
     public class BackendService
     {
-        public ChristmasProject GetChristmasProject(ParticipationResponse participationResponse)
+        public async Task<ChristmasProject> GetChristmasProjectAsync(ParticipationResponse participationResponse)
         {
             var esClient = new ElasticClient(
                 "xmas2019:ZXUtY2VudHJhbC0xLmF3cy5jbG91ZC5lcy5pbyRlZWJjNmYyNzcxM2Q0NTE5OTcwZDc1Yzg2MDUwZTM2MyQyNDFmMzQ3OWNkNzg0ZTUyOTRkODk5OTViMjg0MjAyYg==",
                 new BasicAuthenticationCredentials(participationResponse.Credentials.UserName, participationResponse.Credentials.Password));
 
-            var project = esClient.Get<ChristmasProject>(participationResponse.Id, descriptor => descriptor.Index("santa-trackings"));
+            var project = await esClient.GetAsync<ChristmasProject>(participationResponse.Id, descriptor => descriptor.Index("santa-trackings"));
 
             return project.Source;
         }
 
-        public async Task<ParticipationResponse> GetParticipationResponse()
+        public async Task<ParticipationResponse> GetParticipationResponseAsync()
         {
-            return await GetPostResponse<ParticipationResponse>("/api/participate", new
+            return await GetPostResponseAsync<ParticipationResponse>("/api/participate", new
             {
                 fullName = "Torben Falck",
                 emailAddress = "tof@falcknet.com",
@@ -33,7 +33,7 @@ namespace VerticaDevXmas2019.Services
             });
         }
 
-        public async Task<T> GetPostResponse<T>(string resource, object payload)
+        public async Task<T> GetPostResponseAsync<T>(string resource, object payload)
         {
             using (var httpClient = new HttpClient())
             {
