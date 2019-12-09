@@ -14,7 +14,7 @@ namespace VerticaDevXmas2019.Domain
         [JsonProperty("lon")]
         public double Longitude { get; internal set; }
 
-        public CanePosition GetNewPosition(IEnumerable<SantaMovement> santaMovements)
+        public CanePosition CalculateCurrentPosition(IEnumerable<SantaMovement> santaMovements)
         {
             var longitudeMovement = 0d;
             var latitudeMovement = 0d;

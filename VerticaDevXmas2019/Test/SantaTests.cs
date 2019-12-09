@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Threading.Tasks;
 using FluentAssertions;
 using NUnit.Framework;
@@ -13,30 +14,43 @@ namespace VerticaDevXmas2019
         [Test]
         public async Task Hatch2_FindSantasPosition_ShouldSucceed()
         {
-            var backendFacade = new BackendService();
+            var backendService = new BackendService();
 
             for (var i = 0; i < 3; i++)
             {
                 var start = DateTime.Now;
                 try
                 {
-                    var participationResponse = await backendFacade.GetParticipationResponse();
+                    var participationResponse = await backendService.GetParticipationResponse();
 
-                    var project = backendFacade.GetProject(participationResponse);
+                    var project = backendService.GetChristmasProject(participationResponse);
 
-                    var canePosition = project.SantasCanePosition.GetNewPosition(project.SantaMovements);
+                    var canePosition = project.InitialCanePosition.CalculateCurrentPosition(project.SantaMovements);
 
                     Console.WriteLine($"{i + 1}. Lat/Lon: {canePosition.ToJson()}");
 
-                    var sut = await backendFacade.GetPostResponse<SantaRescueResponse>("/api/santarescue", new SantaRescueRequest()
+                    var sut = await backendService.GetPostResponse<SantaRescueResponse>("/api/santarescue", new SantaRescueRequest()
                     {
                         Id = participationResponse.Id,
                         Position = canePosition
                     });
 
+                    //Asserts
                     sut.Should().NotBeNull();
+                    sut.Token.Should().NotBeNullOrEmpty();
+                    sut.SantaZones.Count().Should().Be(8);
 
-                    Console.WriteLine($"Congrats - you found Santa at: {sut.ToJson()}");
+                    foreach (var zone in sut.SantaZones)
+                    {
+                        zone.Reindeer.Should().BeOneOf(new[] { "Cupid", "Comet", "Vixen", "Prancer", "Blitzen", "Dancer", "Donner", "Dasher" });
+                        zone.CountryCode.Should().NotBeNullOrEmpty();
+                        zone.CityName.Should().NotBeNullOrEmpty();
+                        Math.Abs(zone.Center.Latitude).Should().BeGreaterThan(0);
+                        Math.Abs(zone.Center.Longitude).Should().BeGreaterThan(0);
+                        zone.Radius.Value.Should().BeGreaterThan(0);
+                    }
+
+                    Console.WriteLine($"Congrats - you found Santa: {sut.ToJson()}");
 
                     break;
                 }
@@ -49,13 +63,35 @@ namespace VerticaDevXmas2019
         }
 
         [Test]
+        public async Task Hatch2_GetChristmasProject_ShouldSucceed()
+        {
+            var backendService = new BackendService();
+
+            var participationResponse = await backendService.GetParticipationResponse();
+
+            var project = backendService.GetChristmasProject(participationResponse);
+
+            project.Id.Should().NotBeNullOrEmpty();
+            project.CanePosition.Count.Should().Be(2);
+            project.InitialCanePosition.Should().NotBeNull();
+            Math.Abs(project.InitialCanePosition.Latitude).Should().BeGreaterThan(0);
+            Math.Abs(project.InitialCanePosition.Longitude).Should().BeGreaterThan(0);
+            project.SantaMovements.Count.Should().BeGreaterThan(0);
+
+            var canePosition = project.InitialCanePosition.CalculateCurrentPosition(project.SantaMovements);
+
+            canePosition.Latitude.Should().NotBe(project.InitialCanePosition.Latitude);
+            canePosition.Longitude.Should().NotBe(project.InitialCanePosition.Longitude);
+        }
+
+        [Test]
         public void Hatch2_KnownMovementAndPos_ShouldSucceed()
         {
             var sut = new CanePosition()
             {
                 Latitude = 71.639566053691,
                 Longitude = -51.1902823595313
-            }.GetNewPosition(new[]{
+            }.CalculateCurrentPosition(new[]{
                 new SantaMovement()
                 {
                     Direction = SantaMovementDirection.Right,
@@ -95,7 +131,7 @@ namespace VerticaDevXmas2019
                     Latitude = 55.6760968,
                     Longitude = 12.568337100000008,
                 }.Dump("Start")
-                .GetNewPosition(new[]{
+                .CalculateCurrentPosition(new[]{
                     new SantaMovement()
                     {
                         Direction = SantaMovementDirection.Down,
@@ -103,7 +139,7 @@ namespace VerticaDevXmas2019
                         Value = 10000
                     }
                 }).Dump("Move down 10 km")
-                .GetNewPosition(new[]
+                .CalculateCurrentPosition(new[]
                 {
                     new SantaMovement()
                     {
@@ -112,7 +148,7 @@ namespace VerticaDevXmas2019
                         Value = 10000
                     }
                 }).Dump("Move right 10 km")
-                .GetNewPosition(new[]
+                .CalculateCurrentPosition(new[]
                 {
                     new SantaMovement()
                     {
@@ -121,7 +157,7 @@ namespace VerticaDevXmas2019
                         Value = 10000
                     }
                 }).Dump("Move up 10 km")
-                .GetNewPosition(new[]
+                .CalculateCurrentPosition(new[]
                 {
                     new SantaMovement()
                     {

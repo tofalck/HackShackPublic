@@ -5,6 +5,6 @@ namespace VerticaDevXmas2019.Domain
     public class EntityObject
     {
         [JsonProperty("id")]
-        public string Id { get; private set; }
+        public string Id { get; set; }
     }
 }
