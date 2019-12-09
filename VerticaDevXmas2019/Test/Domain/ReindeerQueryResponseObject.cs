@@ -10,9 +10,5 @@ namespace VerticaDevXmas2019.Domain
         public string Name { get; set; }
         [JsonProperty("location")]
         public ReindeerLocation Location { get; set; }
-        [JsonProperty("dist")]
-        public double Distance { get; set; }
-        [JsonProperty("radius")]
-        public double Radius { get; set; }
     }
 }

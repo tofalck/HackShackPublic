@@ -33,7 +33,7 @@ namespace VerticaDevXmas2019
                         UriFactory.CreateDocumentCollectionUri("World", "Objects"),
                         new SqlQuerySpec()
                         {
-                            QueryText = "SELECT o.id, o.name, o.location, o.countryCode, @radius as radius, ST_DISTANCE(o.location, {'type': 'Point', 'coordinates':[@lon, @lat]}) as dist FROM Objects o WHERE o.countryCode = @partitionKey AND o.name = @name AND ST_DISTANCE(o.location, {'type': 'Point', 'coordinates':[@lon, @lat]}) <= @radius",
+                            QueryText = "SELECT o.id, o.name, o.location, o.countryCode FROM Objects o WHERE o.countryCode = @partitionKey AND o.name = @name AND ST_DISTANCE(o.location, {'type': 'Point', 'coordinates':[@lon, @lat]}) <= @radius",
                             Parameters = new SqlParameterCollection(new[]
                             {
                                 new SqlParameter("@partitionKey", zone.CountryCode),
@@ -53,11 +53,12 @@ namespace VerticaDevXmas2019
 
                 reindeerRescueLocations.Distinct().Count().Should().Be(8);
 
-                var postResponse = await backendService.GetPostResponse<ReindeerRescueResponse>("/api/reindeerrescue", new ReindeerRescueRequest()
-                {
-                    Id = project.Id,
-                    Locations = reindeerRescueLocations
-                });
+                var postResponse = await backendService.GetPostResponse<ReindeerRescueResponse>("/api/reindeerrescue",
+                    new ReindeerRescueRequest()
+                    {
+                        Id = project.Id,
+                        Locations = reindeerRescueLocations
+                    });
 
                 postResponse.Should().NotBeNull();
                 postResponse.Message.Should().StartWith("Good job");
