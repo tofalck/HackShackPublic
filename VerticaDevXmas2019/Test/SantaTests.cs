@@ -75,30 +75,28 @@ namespace VerticaDevXmas2019
         {
             var backendService = new BackendService();
 
-            for (var i = 0; i < 3; i++)
+            var start = DateTime.Now;
+            try
             {
-                var start = DateTime.Now;
-                try
+                var participationResponse = await backendService.GetParticipationResponse();
+
+                var project = backendService.GetChristmasProject(participationResponse);
+
+                var sut = await backendService.GetPostResponse<SantaRescueResponse>("/api/santarescue", new SantaRescueRequest()
                 {
-                    var participationResponse = await backendService.GetParticipationResponse();
+                    Id = participationResponse.Id,
+                    Position = project.InitialCanePosition.CalculateCurrentPosition(project.SantaMovements)
+                });
 
-                    var project = backendService.GetChristmasProject(participationResponse);
+                //Asserts
+                sut.Should().NotBeNull();
+                sut.Token.Should().NotBeNullOrEmpty();
+                sut.SantaZones.Count().Should().Be(8);
 
-                    var sut = await backendService.GetPostResponse<SantaRescueResponse>("/api/santarescue", new SantaRescueRequest()
-                    {
-                        Id = participationResponse.Id,
-                        Position = project.InitialCanePosition.CalculateCurrentPosition(project.SantaMovements)
-                    });
-
-                    //Asserts
-                    sut.Should().NotBeNull();
-                    sut.Token.Should().NotBeNullOrEmpty();
-                    sut.SantaZones.Count().Should().Be(8);
-
-                    foreach (var zone in sut.SantaZones)
-                    {
-                        zone.Reindeer.Should().BeOneOf(new[]
-                            {
+                foreach (var zone in sut.SantaZones)
+                {
+                    zone.Reindeer.Should().BeOneOf(new[]
+                        {
                                 "Cupid",
                                 "Comet",
                                 "Vixen",
@@ -107,23 +105,21 @@ namespace VerticaDevXmas2019
                                 "Dancer",
                                 "Donner",
                                 "Dasher" });
-                        zone.CountryCode.Should().NotBeNullOrEmpty();
-                        zone.CityName.Should().NotBeNullOrEmpty();
-                        Math.Abs(zone.Center.Latitude).Should().BeGreaterThan(0);
-                        Math.Abs(zone.Center.Longitude).Should().BeGreaterThan(0);
-                        zone.Radius.Value.Should().BeGreaterThan(0);
-                    }
-
-                    Console.WriteLine($"Congrats - you found Santa: {sut.ToJson()}");
-
-                    break;
+                    zone.CountryCode.Should().NotBeNullOrEmpty();
+                    zone.CityName.Should().NotBeNullOrEmpty();
+                    Math.Abs(zone.Center.Latitude).Should().BeGreaterThan(0);
+                    Math.Abs(zone.Center.Longitude).Should().BeGreaterThan(0);
+                    zone.Radius.Value.Should().BeGreaterThan(0);
                 }
-                catch (ApplicationException e)
-                {
-                    Console.WriteLine(e.Message);
-                }
-                Console.WriteLine($"Time spent: {(DateTime.Now - start).TotalSeconds}");
+
+                Console.WriteLine($"Congrats - you found Santa: {sut.ToJson()}");
             }
+            catch (ApplicationException e)
+            {
+                Console.WriteLine(e.Message);
+                throw;
+            }
+            Console.WriteLine($"Time spent: {(DateTime.Now - start).TotalSeconds}");
         }
 
         [Test]
