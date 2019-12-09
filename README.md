@@ -1,1 +1,1 @@
-# HackShackPublic
+# Hack Shack's public ramblings.
