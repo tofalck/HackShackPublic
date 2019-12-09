@@ -20,20 +20,25 @@ namespace VerticaDevXmas2019
 
             var project = backendService.GetChristmasProject(await backendService.GetParticipationResponse());
 
-            var santaRescueResponse = await backendService.GetPostResponse<SantaRescueResponse>("/api/santarescue", new SantaRescueRequest()
-            {
-                Id = project.Id,
-                Position = project.InitialCanePosition.CalculateCurrentPosition(project.SantaMovements)
-            });
+            var santaRescueResponse = await backendService.GetPostResponse<SantaRescueResponse>("/api/santarescue",
+                new SantaRescueRequest()
+                {
+                    Id = project.Id,
+                    Position = project.InitialCanePosition.CalculateCurrentPosition(project.SantaMovements)
+                });
 
-            using (var documentClient = new DocumentClient(new Uri("https://xmas2019.documents.azure.com:443/"), santaRescueResponse.Token))
+            using (var documentClient = new DocumentClient(
+                new Uri("https://xmas2019.documents.azure.com:443/"), 
+                santaRescueResponse.Token))
             {
                 var reindeerRescueLocations = santaRescueResponse.SantaZones
                     .Select(zone => documentClient.CreateDocumentQuery<ReindeerQueryResponseObject>(
                         UriFactory.CreateDocumentCollectionUri("World", "Objects"),
                         new SqlQuerySpec()
                         {
-                            QueryText = "SELECT o.id, o.name, o.location, o.countryCode FROM Objects o WHERE o.countryCode = @partitionKey AND o.name = @name AND ST_DISTANCE(o.location, {'type': 'Point', 'coordinates':[@lon, @lat]}) <= @radius",
+                            QueryText = "SELECT o.id, o.name, o.location, o.countryCode FROM Objects o " +
+                                        "WHERE o.countryCode = @partitionKey AND o.name = @name AND " +
+                                        "ST_DISTANCE(o.location, {'type': 'Point', 'coordinates':[@lon, @lat]}) <= @radius",
                             Parameters = new SqlParameterCollection(new[]
                             {
                                 new SqlParameter("@partitionKey", zone.CountryCode),
