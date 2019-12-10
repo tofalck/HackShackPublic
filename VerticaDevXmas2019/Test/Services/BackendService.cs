@@ -20,7 +20,7 @@ namespace VerticaDevXmas2019.Services
 {
     public class BackendService
     {
-        public async Task GetReindeerLocations(Action<ChristmasProject, IEnumerable<ReindeerRescueLocation>> action)
+        public async Task GetReindeerLocations(Action<ChristmasProject, IEnumerable<ReindeerRescueLocation>> handleFoundReindeers)
         {
             var project = await GetChristmasProjectAsync(await GetParticipationResponseAsync());
 
@@ -35,7 +35,7 @@ namespace VerticaDevXmas2019.Services
                 new Uri("https://xmas2019.documents.azure.com:443/"),
                 santaRescueResponse.Token))
             {
-                action(project, (from zone in santaRescueResponse.SantaZones
+                handleFoundReindeers(project, (from zone in santaRescueResponse.SantaZones
                     let foundReindeer = (from reindeerQueryResponseObject in documentClient.CreateDocumentQuery<ReindeerQueryResponseObject>(
                             UriFactory.CreateDocumentCollectionUri("World", "Objects"),
                             new FeedOptions() {PartitionKey = new PartitionKey(zone.CountryCode)})
