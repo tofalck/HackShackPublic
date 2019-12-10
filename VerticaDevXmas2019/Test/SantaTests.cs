@@ -33,29 +33,24 @@ namespace VerticaDevXmas2019
                 new Uri("https://xmas2019.documents.azure.com:443/"), 
                 santaRescueResponse.Token))
             {
-                var reindeerRescueLocations = santaRescueResponse.SantaZones
-                    .Select(zone => documentClient.CreateDocumentQuery<ReindeerQueryResponseObject>(
-                        UriFactory.CreateDocumentCollectionUri("World", "Objects"),
-                        new FeedOptions() { PartitionKey = new PartitionKey(zone.CountryCode) })
-                        .Where(reindeerQueryResponseObject => 
-                            reindeerQueryResponseObject.Name == zone.Reindeer && 
-                            zone.GetCenter().Distance(reindeerQueryResponseObject.Location) <= zone.Radius.ValueInMeters).AsEnumerable().Single())
-                    .Select(reindeerQueryResponseObject => new ReindeerRescueLocation()
-                    {
-                        Name = reindeerQueryResponseObject.Name,
-                        //NB: GeoJSON use lon/lat instead of lat/lon...
-                        //TODO: We have our own stand in for Azure's point to serialize properly - could/should be fixed somehow
-                        Position = new Point() {Latitude = reindeerQueryResponseObject.Location.Position.Latitude, Longitude = reindeerQueryResponseObject.Location.Position.Longitude}
-                    })
-                    .ToArray();
-
-                reindeerRescueLocations.Distinct().Count().Should().Be(8);
-
                 var postResponse = await backendService.GetPostResponseAsync<ReindeerRescueResponse>("/api/reindeerrescue",
                     new ReindeerRescueRequest()
                     {
                         Id = project.Id,
-                        Locations = reindeerRescueLocations
+                        Locations = (from zone in santaRescueResponse.SantaZones
+                            let foundReindeer = (from reindeerQueryResponseObject in documentClient.CreateDocumentQuery<ReindeerQueryResponseObject>(
+                                    UriFactory.CreateDocumentCollectionUri("World", "Objects"),
+                                    new FeedOptions() { PartitionKey = new PartitionKey(zone.CountryCode) })
+                                where (reindeerQueryResponseObject.Name == zone.Reindeer &&
+                                       zone.GetCenter().Distance(reindeerQueryResponseObject.Location) <= zone.Radius.ValueInMeters)
+                                select reindeerQueryResponseObject).AsEnumerable().Single(o => o != null)
+                            select new ReindeerRescueLocation()
+                            {
+                                Name = foundReindeer.Name,
+                                //NB: GeoJSON use lon/lat instead of lat/lon...
+                                //TODO: We have our own stand in for Azure's point to serialize properly - could/should be fixed somehow
+                                Position = new Point() { Latitude = foundReindeer.Location.Position.Latitude, Longitude = foundReindeer.Location.Position.Longitude }
+                            }).ToArray()
                     });
 
                 postResponse.Should().NotBeNull();

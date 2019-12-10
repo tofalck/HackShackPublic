@@ -48,5 +48,17 @@ namespace VerticaDevXmas2019.Services
                 return response;
             }
         }
+
+        public async Task<SantaRescueResponse> Get()
+        {
+            var project = await GetChristmasProjectAsync(await GetParticipationResponseAsync());
+
+            return await GetPostResponseAsync<SantaRescueResponse>("/api/santarescue",
+                new SantaRescueRequest()
+                {
+                    Id = project.Id,
+                    Position = project.InitialCanePosition.CalculateCurrentPosition(project.SantaMovements)
+                });
+        }
     }
 }
