@@ -41,13 +41,19 @@ namespace VerticaDevXmas2019.Services
                             new FeedOptions() {PartitionKey = new PartitionKey(zone.CountryCode)})
                         where (reindeerQueryResponseObject.Name == zone.Reindeer &&
                                zone.GetCenter().Distance(reindeerQueryResponseObject.Location) <= zone.Radius.ValueInMeters)
-                        select reindeerQueryResponseObject).AsEnumerable().Single(reindeerQueryResponseObject => reindeerQueryResponseObject != null)
+                        select reindeerQueryResponseObject)
+                            .AsEnumerable()
+                            .Single(reindeerQueryResponseObject => reindeerQueryResponseObject != null)
                     select new ReindeerRescueLocation()
                     {
                         Name = foundReindeer.Name,
                         //NB: GeoJSON use lon/lat instead of lat/lon...
                         //TODO: We have our own stand in for Azure's point to serialize properly - could/should be fixed somehow
-                        Position = new Point() {Latitude = foundReindeer.Location.Position.Latitude, Longitude = foundReindeer.Location.Position.Longitude}
+                        Position = new Point()
+                        {
+                            Latitude = foundReindeer.Location.Position.Latitude,
+                            Longitude = foundReindeer.Location.Position.Longitude
+                        }
                     }).ToArray());
             }
         }
