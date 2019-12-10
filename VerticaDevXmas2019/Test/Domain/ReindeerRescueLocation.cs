@@ -9,6 +9,7 @@ namespace VerticaDevXmas2019.Domain
         public string Name { get; set; }
         [JsonProperty("position")]
         public Point Position { get; set; }
+        //public Microsoft.Azure.Documents.Spatial.Point Position { get; set; }
 
         private sealed class NamePositionEqualityComparer : IEqualityComparer<ReindeerRescueLocation>
         {

@@ -7,6 +7,8 @@ using VerticaDevXmas2019.Domain;
 using VerticaDevXmas2019.Services;
 using Microsoft.Azure.Documents;
 using Microsoft.Azure.Documents.Client;
+using Microsoft.Azure.Documents.Spatial;
+using Point = VerticaDevXmas2019.Domain.Point;
 
 namespace VerticaDevXmas2019
 {
@@ -34,25 +36,16 @@ namespace VerticaDevXmas2019
                 var reindeerRescueLocations = santaRescueResponse.SantaZones
                     .Select(zone => documentClient.CreateDocumentQuery<ReindeerQueryResponseObject>(
                         UriFactory.CreateDocumentCollectionUri("World", "Objects"),
-                        new SqlQuerySpec()
-                        {
-                            QueryText = "SELECT o.id, o.name, o.location, o.countryCode FROM Objects o " +
-                                        "WHERE o.countryCode = @partitionKey AND o.name = @name AND " +
-                                        "ST_DISTANCE(o.location, {'type': 'Point', 'coordinates':[@lon, @lat]}) <= @radius",
-                            Parameters = new SqlParameterCollection(new[]
-                            {
-                                new SqlParameter("@partitionKey", zone.CountryCode),
-                                new SqlParameter("@name", zone.Reindeer),
-                                new SqlParameter("@lat", zone.Center.Latitude),
-                                new SqlParameter("@lon", zone.Center.Longitude),
-                                new SqlParameter("@radius", zone.Radius.ValueInMeters),
-                            })
-                        }).AsEnumerable().SingleOrDefault())
-                    .Where(reindeerQueryResponseObject => reindeerQueryResponseObject != null).Select(o => new ReindeerRescueLocation()
+                        new FeedOptions() { PartitionKey = new PartitionKey(zone.CountryCode) })
+                        .Where(reindeerQueryResponseObject => 
+                            reindeerQueryResponseObject.Name == zone.Reindeer && 
+                            zone.GetCenter().Distance(reindeerQueryResponseObject.Location) <= zone.Radius.ValueInMeters).AsEnumerable().Single())
+                    .Select(reindeerQueryResponseObject => new ReindeerRescueLocation()
                     {
-                        Name = o.Name,
+                        Name = reindeerQueryResponseObject.Name,
                         //NB: GeoJSON use lon/lat instead of lat/lon...
-                        Position = new Point() { Latitude = o.Location.Coordinates[1], Longitude = o.Location.Coordinates[0] }
+                        //TODO: We have our own stand in for Azure's point to serialize properly - could/should be fixed somehow
+                        Position = new Point() {Latitude = reindeerQueryResponseObject.Location.Position.Latitude, Longitude = reindeerQueryResponseObject.Location.Position.Longitude}
                     })
                     .ToArray();
 

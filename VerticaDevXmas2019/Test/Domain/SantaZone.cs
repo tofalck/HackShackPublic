@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using Microsoft.Azure.Documents.Spatial;
+using Newtonsoft.Json;
 
 namespace VerticaDevXmas2019.Domain
 {
@@ -15,6 +16,8 @@ namespace VerticaDevXmas2019.Domain
 
         [JsonProperty("center")]
         public CanePosition Center { get; internal set; }
+
+        public Microsoft.Azure.Documents.Spatial.Point GetCenter() => new Microsoft.Azure.Documents.Spatial.Point(Center.Longitude, Center.Latitude);
 
         [JsonProperty("radius")]
         public SantaMovementRadius Radius { get; internal set; }

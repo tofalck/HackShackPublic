@@ -8,6 +8,8 @@ namespace VerticaDevXmas2019.Domain
         private const double EarthRadius = 6378.137d; // radius of the earth in kilometers
         private const double OneMeterInDegree = (1 / (2 * Math.PI / 360 * EarthRadius) / 1000);  // 1 meter in degree
 
+        private double GetMovementInMeters(SantaMovement santaMovement) => Math.Abs(santaMovement.Value.InMeters(santaMovement.Unit)) * ((santaMovement.Direction == SantaMovementDirection.Down || santaMovement.Direction == SantaMovementDirection.Left) ? -1 : 1);
+
         public CanePosition CalculateCurrentPosition(IEnumerable<SantaMovement> santaMovements)
         {
             var longitudeMovement = 0d;
@@ -15,15 +17,19 @@ namespace VerticaDevXmas2019.Domain
             foreach (var santaMovement in santaMovements)
             {
                 var delta = (GetMovementInMeters(santaMovement));
-                if (santaMovement.Direction == SantaMovementDirection.Up || santaMovement.Direction == SantaMovementDirection.Down)
+                switch (santaMovement.Direction)
                 {
-                    latitudeMovement += delta;
+                    case SantaMovementDirection.Up:
+                    case SantaMovementDirection.Down:
+                        latitudeMovement += delta;
+                        break;
+                    case SantaMovementDirection.Left:
+                    case SantaMovementDirection.Right:
+                        longitudeMovement += delta;
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException();
                 }
-                else if (santaMovement.Direction == SantaMovementDirection.Left || santaMovement.Direction == SantaMovementDirection.Right)
-                {
-                    longitudeMovement += delta;
-                }
-                else throw new ArgumentOutOfRangeException();
             }
 
             longitudeMovement *= OneMeterInDegree;
@@ -37,13 +43,6 @@ namespace VerticaDevXmas2019.Domain
                 Latitude = newLatitude,
                 Longitude = newLongitude
             };
-        }
-
-        private static double GetMovementInMeters(SantaMovement santaMovement)
-        {
-            var movementValue = (santaMovement.Unit == SantaMovementUnit.Foot ? santaMovement.Value * 0.304800610d : santaMovement.Unit == SantaMovementUnit.Kilometer ? santaMovement.Value * 1000 : santaMovement.Value);
-            movementValue = Math.Abs(movementValue) * ((santaMovement.Direction == SantaMovementDirection.Down || santaMovement.Direction == SantaMovementDirection.Left) ? -1 : 1);
-            return movementValue;
         }
     }
 }
