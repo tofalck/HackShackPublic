@@ -20,42 +20,20 @@ namespace VerticaDevXmas2019
         {
             var backendService = new BackendService();
 
-            var project = await backendService.GetChristmasProjectAsync(await backendService.GetParticipationResponseAsync());
-
-            var santaRescueResponse = await backendService.GetPostResponseAsync<SantaRescueResponse>("/api/santarescue",
-                new SantaRescueRequest()
-                {
-                    Id = project.Id,
-                    Position = project.InitialCanePosition.CalculateCurrentPosition(project.SantaMovements)
-                });
-
-            using (var documentClient = new DocumentClient(
-                new Uri("https://xmas2019.documents.azure.com:443/"), 
-                santaRescueResponse.Token))
+            await backendService.GetReindeerLocations(async (project, locations) =>
             {
-                var postResponse = await backendService.GetPostResponseAsync<ReindeerRescueResponse>("/api/reindeerrescue",
+                locations.Distinct().Count().Should().Be(8);
+
+                var reindeerRescueResponse = await backendService.GetPostResponseAsync<ReindeerRescueResponse>("/api/reindeerrescue",
                     new ReindeerRescueRequest()
                     {
                         Id = project.Id,
-                        Locations = (from zone in santaRescueResponse.SantaZones
-                            let foundReindeer = (from reindeerQueryResponseObject in documentClient.CreateDocumentQuery<ReindeerQueryResponseObject>(
-                                    UriFactory.CreateDocumentCollectionUri("World", "Objects"),
-                                    new FeedOptions() { PartitionKey = new PartitionKey(zone.CountryCode) })
-                                where (reindeerQueryResponseObject.Name == zone.Reindeer &&
-                                       zone.GetCenter().Distance(reindeerQueryResponseObject.Location) <= zone.Radius.ValueInMeters)
-                                select reindeerQueryResponseObject).AsEnumerable().Single(o => o != null)
-                            select new ReindeerRescueLocation()
-                            {
-                                Name = foundReindeer.Name,
-                                //NB: GeoJSON use lon/lat instead of lat/lon...
-                                //TODO: We have our own stand in for Azure's point to serialize properly - could/should be fixed somehow
-                                Position = new Point() { Latitude = foundReindeer.Location.Position.Latitude, Longitude = foundReindeer.Location.Position.Longitude }
-                            }).ToArray()
+                        Locations = locations
                     });
 
-                postResponse.Should().NotBeNull();
-                postResponse.Message.Should().StartWith("Good job");
-            }
+                reindeerRescueResponse.Should().NotBeNull();
+                reindeerRescueResponse.Message.Should().StartWith("Good job");
+            });
         }
 
         [Test]
