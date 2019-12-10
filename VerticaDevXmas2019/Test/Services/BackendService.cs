@@ -41,7 +41,7 @@ namespace VerticaDevXmas2019.Services
                             new FeedOptions() {PartitionKey = new PartitionKey(zone.CountryCode)})
                         where (reindeerQueryResponseObject.Name == zone.Reindeer &&
                                zone.GetCenter().Distance(reindeerQueryResponseObject.Location) <= zone.Radius.ValueInMeters)
-                        select reindeerQueryResponseObject).AsEnumerable().Single(o => o != null)
+                        select reindeerQueryResponseObject).AsEnumerable().Single(reindeerQueryResponseObject => reindeerQueryResponseObject != null)
                     select new ReindeerRescueLocation()
                     {
                         Name = foundReindeer.Name,
