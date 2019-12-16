@@ -17,15 +17,15 @@ namespace VerticaDevXmas2019.Domain
         {
             var distributedToys = new List<Toy>();
 
-            var childrenWithOneMatchInSantasBag = Children.Items.Where(child => Toys.Items.Count(toy => child.Wishes.Toys.Items.Select(toy1 => toy1.Name).Contains(toy.Name)) == 1).ToArray();
+            var childrenWithOneMatchInSantasBag = Children.Items.Where(child => Toys.Items.Count(toyInSantasBag => child.Wishes.Toys.Items.Select(toyWish => toyWish.Name).Contains(toyInSantasBag.Name)) == 1).ToArray();
 
-            ToyDistribution CreateDistribution(Child child1, Toy foundToy1)
+            ToyDistribution CreateDistribution(Child child, Toy toy)
             {
-                distributedToys.Add(foundToy1);
+                distributedToys.Add(toy);
                 return new ToyDistribution()
                 {
-                    ChildName = child1.Name,
-                    ToyName = foundToy1.Name
+                    ChildName = child.Name,
+                    ToyName = toy.Name
                 };
             }
 
