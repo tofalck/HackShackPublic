@@ -5,6 +5,7 @@ using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml.Serialization;
 using Elasticsearch.Net;
 using FluentAssertions;
 using Microsoft.Azure.Documents;
@@ -20,30 +21,31 @@ namespace VerticaDevXmas2019.Services
 {
     public class BackendService
     {
-        public async Task GetReindeerLocations(Action<ChristmasProject, IEnumerable<ReindeerRescueLocation>> handleFoundReindeers)
+        public void GetReindeerLocations(out ChristmasProject project, out IEnumerable<ReindeerRescueLocation> handleFoundReindeers)
+//        public async Task GetReindeerLocations(Action<ChristmasProject, IEnumerable<ReindeerRescueLocation>> handleFoundReindeers)
         {
-            var project = await GetChristmasProjectAsync(await GetParticipationResponseAsync());
+            project = GetChristmasProjectAsync(GetParticipationResponseAsync().Result).Result;
 
-            var santaRescueResponse = await GetPostResponseAsync<SantaRescueResponse>("/api/santarescue",
+            var santaRescueResponse = GetPostResponseAsync<SantaRescueResponse>("/api/santarescue",
                 new SantaRescueRequest()
                 {
                     Id = project.Id,
                     Position = project.InitialCanePosition.CalculateCurrentPosition(project.SantaMovements)
-                });
+                }).Result;
 
             using (var documentClient = new DocumentClient(
                 new Uri("https://xmas2019.documents.azure.com:443/"),
                 santaRescueResponse.Token))
             {
-                handleFoundReindeers(project, (from zone in santaRescueResponse.SantaZones
+                handleFoundReindeers = (from zone in santaRescueResponse.SantaZones
                     let foundReindeer = (from reindeerQueryResponseObject in documentClient.CreateDocumentQuery<ReindeerQueryResponseObject>(
-                            UriFactory.CreateDocumentCollectionUri("World", "Objects"),
-                            new FeedOptions() {PartitionKey = new PartitionKey(zone.CountryCode)})
-                        where (reindeerQueryResponseObject.Name == zone.Reindeer &&
-                               zone.GetCenter().Distance(reindeerQueryResponseObject.Location) <= zone.Radius.ValueInMeters)
-                        select reindeerQueryResponseObject)
-                            .AsEnumerable()
-                            .Single(reindeerQueryResponseObject => reindeerQueryResponseObject != null)
+                                UriFactory.CreateDocumentCollectionUri("World", "Objects"),
+                                new FeedOptions() {PartitionKey = new PartitionKey(zone.CountryCode)})
+                            where (reindeerQueryResponseObject.Name == zone.Reindeer &&
+                                   zone.GetCenter().Distance(reindeerQueryResponseObject.Location) <= zone.Radius.ValueInMeters)
+                            select reindeerQueryResponseObject)
+                        .AsEnumerable()
+                        .Single(reindeerQueryResponseObject => reindeerQueryResponseObject != null)
                     select new ReindeerRescueLocation()
                     {
                         Name = foundReindeer.Name,
@@ -54,7 +56,7 @@ namespace VerticaDevXmas2019.Services
                             Latitude = foundReindeer.Location.Position.Latitude,
                             Longitude = foundReindeer.Location.Position.Longitude
                         }
-                    }).ToArray());
+                    }).ToArray();
             }
         }
 
@@ -95,6 +97,7 @@ namespace VerticaDevXmas2019.Services
             }
         }
 
+
         public async Task<SantaRescueResponse> Get()
         {
             var project = await GetChristmasProjectAsync(await GetParticipationResponseAsync());
@@ -105,6 +108,23 @@ namespace VerticaDevXmas2019.Services
                     Id = project.Id,
                     Position = project.InitialCanePosition.CalculateCurrentPosition(project.SantaMovements)
                 });
+        }
+
+        public async Task<ToyDistributionProblem> GetToyDistribution(ReindeerRescueResponse reindeerRescueResponse)
+        {
+            using (var httpClient = new HttpClient())
+            {
+                var httpResponseMessage = await httpClient.GetAsync(new Uri(reindeerRescueResponse.ToyDistributionXmlUrl));
+                var str = await httpResponseMessage.Content.ReadAsStringAsync();
+                var body = await httpResponseMessage.Content.ReadAsStreamAsync();
+                if (httpResponseMessage.StatusCode != HttpStatusCode.OK)
+                {
+                    throw new ApplicationException("Unable to read content");
+                }
+                var xmlSerializer = new XmlSerializer(typeof(ToyDistributionProblem));
+                var response = xmlSerializer.Deserialize(body);
+                return (ToyDistributionProblem)response;
+            }
         }
     }
 }

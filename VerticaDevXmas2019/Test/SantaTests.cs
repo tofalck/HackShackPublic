@@ -5,10 +5,6 @@ using FluentAssertions;
 using NUnit.Framework;
 using VerticaDevXmas2019.Domain;
 using VerticaDevXmas2019.Services;
-using Microsoft.Azure.Documents;
-using Microsoft.Azure.Documents.Client;
-using Microsoft.Azure.Documents.Spatial;
-using Point = VerticaDevXmas2019.Domain.Point;
 
 namespace VerticaDevXmas2019
 {
@@ -16,24 +12,65 @@ namespace VerticaDevXmas2019
     public class SantaTests
     {
         [Test]
+        public async Task Hatch4_GetToyDistributionList_ShouldSucceed()
+        {
+            var backendService = new BackendService();
+
+            backendService.GetReindeerLocations(out var christmasProject, out var reindeerLocations);
+
+            var reindeerRescueResponse = await backendService.GetPostResponseAsync<ReindeerRescueResponse>("/api/reindeerrescue",
+                new ReindeerRescueRequest()
+                {
+                    Id = christmasProject.Id,
+                    Locations = reindeerLocations
+                });
+
+            var toyDistributionProblem = await backendService.GetToyDistribution(reindeerRescueResponse);
+
+            toyDistributionProblem.Should().NotBeNull();
+            toyDistributionProblem.Toys.Items.Count().Should().Be(15);
+            toyDistributionProblem.Children.Items.Length.Should().Be(15);
+            toyDistributionProblem.Children.Items.All(child => 
+                string.IsNullOrEmpty(child.Name) == false && 
+                child.Wishes.Toys.Items.Length <= 3 && 
+                child.Wishes.Toys.Items.All(toy => 
+                    string.IsNullOrEmpty(toy.Name) == false && 
+                    toyDistributionProblem.Toys.Items.SingleOrDefault(availableToy => availableToy.Name == toy.Name) != null));
+
+            var toyDistributions = toyDistributionProblem.DistributePresentsToChildren();
+
+            toyDistributions.Should().NotBeNull();
+            toyDistributions.Count().Should().Be(15);
+            toyDistributions.Distinct(new ToyDistributionComparer()).Count().Should().Be(15);
+            var toyDistributionResponse = await backendService.GetPostResponseAsync<ToyDistributionResponse>("/api/toydistribution", new ToyDistributionRequest()
+            {
+                Id = christmasProject.Id,
+                ToyDistribution = toyDistributions
+            });
+            toyDistributionResponse.Should().NotBeNull();
+            toyDistributionResponse.Message.Should().NotBeNullOrEmpty();
+        }
+
+        [Test]
         public async Task Hatch3_LocateReindeers_ShouldSucceed()
         {
             var backendService = new BackendService();
 
-            await backendService.GetReindeerLocations(async (project, locations) =>
-            {
-                locations.Distinct().Count().Should().Be(8);
+            backendService.GetReindeerLocations(out var christmasProject, out var reindeerLocations);
 
-                var reindeerRescueResponse = await backendService.GetPostResponseAsync<ReindeerRescueResponse>("/api/reindeerrescue",
-                    new ReindeerRescueRequest()
-                    {
-                        Id = project.Id,
-                        Locations = locations
-                    });
+            christmasProject.Should().NotBeNull();
+            reindeerLocations.Distinct().Count().Should().Be(8);
 
-                reindeerRescueResponse.Should().NotBeNull();
-                reindeerRescueResponse.Message.Should().StartWith("Good job");
-            });
+            var reindeerRescueResponse = await backendService.GetPostResponseAsync<ReindeerRescueResponse>("/api/reindeerrescue",
+                new ReindeerRescueRequest()
+                {
+                    Id = christmasProject.Id,
+                    Locations = reindeerLocations
+                });
+
+            reindeerRescueResponse.Should().NotBeNull();
+            reindeerRescueResponse.Message.Should().StartWith("Good job");
+            reindeerRescueResponse.ToyDistributionXmlUrl.Should().NotBeNullOrEmpty();
         }
 
         [Test]

@@ -5,6 +5,9 @@ namespace VerticaDevXmas2019.Domain
 {
     public class ReindeerRescueResponse : ValueObject
     {
+        [JsonProperty("toyDistributionXmlUrl")]
+        public string ToyDistributionXmlUrl { get; set; }
+
         [JsonProperty("message")]
         public string Message { get; set; }
     }
