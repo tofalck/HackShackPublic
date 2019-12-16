@@ -7,7 +7,6 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
 using Elasticsearch.Net;
-using FluentAssertions;
 using Microsoft.Azure.Documents;
 using Microsoft.Azure.Documents.Client;
 using Nest;
@@ -22,7 +21,6 @@ namespace VerticaDevXmas2019.Services
     public class BackendService
     {
         public void GetReindeerLocations(out ChristmasProject project, out IEnumerable<ReindeerRescueLocation> handleFoundReindeers)
-//        public async Task GetReindeerLocations(Action<ChristmasProject, IEnumerable<ReindeerRescueLocation>> handleFoundReindeers)
         {
             project = GetChristmasProjectAsync(GetParticipationResponseAsync().Result).Result;
 
@@ -95,19 +93,6 @@ namespace VerticaDevXmas2019.Services
                 var response = body.FromJson<T>();
                 return response;
             }
-        }
-
-
-        public async Task<SantaRescueResponse> Get()
-        {
-            var project = await GetChristmasProjectAsync(await GetParticipationResponseAsync());
-
-            return await GetPostResponseAsync<SantaRescueResponse>("/api/santarescue",
-                new SantaRescueRequest()
-                {
-                    Id = project.Id,
-                    Position = project.InitialCanePosition.CalculateCurrentPosition(project.SantaMovements)
-                });
         }
 
         public async Task<ToyDistributionProblem> GetToyDistribution(ReindeerRescueResponse reindeerRescueResponse)
