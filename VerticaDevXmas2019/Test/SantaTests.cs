@@ -37,7 +37,8 @@ namespace VerticaDevXmas2019
                     string.IsNullOrEmpty(toy.Name) == false && 
                     toyDistributionProblem.Toys.Items.SingleOrDefault(availableToy => availableToy.Name == toy.Name) != null));
 
-            var toyDistributions = toyDistributionProblem.DistributePresentsToChildren();
+            var santa = new Santa();
+            var toyDistributions = santa.DistributePresentsToChildren(toyDistributionProblem);
 
             toyDistributions.Should().NotBeNull();
             toyDistributions.Count().Should().Be(15);
