@@ -2,6 +2,6 @@
 {
     public class WishList
     {
-        public ToysList Toys { get; set; }
+        public Toy[] Toys { get; set; }
     }
 }

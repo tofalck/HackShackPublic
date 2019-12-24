@@ -16,7 +16,7 @@ namespace VerticaDevXmas2019
         {
             var backendService = new BackendService();
 
-            backendService.GetReindeerLocations(out var christmasProject, out var reindeerLocations);
+            var (christmasProject, reindeerLocations) = backendService.GetReindeerLocations();
 
             var reindeerRescueResponse = await backendService.GetPostResponseAsync<ReindeerRescueResponse>("/api/reindeerrescue",
                 new ReindeerRescueRequest()
@@ -25,17 +25,17 @@ namespace VerticaDevXmas2019
                     Locations = reindeerLocations
                 });
 
-            var toyDistributionProblem = await backendService.GetToyDistribution(reindeerRescueResponse);
+            var toyDistributionProblem = backendService.GetToyDistribution(reindeerRescueResponse);
 
             toyDistributionProblem.Should().NotBeNull();
-            toyDistributionProblem.Toys.Items.Count().Should().Be(15);
-            toyDistributionProblem.Children.Items.Length.Should().Be(15);
-            toyDistributionProblem.Children.Items.All(child => 
+            toyDistributionProblem.Toys.Count().Should().Be(15);
+            toyDistributionProblem.Children.Length.Should().Be(15);
+            toyDistributionProblem.Children.All(child => 
                 string.IsNullOrEmpty(child.Name) == false && 
-                child.Wishes.Toys.Items.Length <= 3 && 
-                child.Wishes.Toys.Items.All(toy => 
+                child.Wishes.Toys.Length <= 3 && 
+                child.Wishes.Toys.All(toy => 
                     string.IsNullOrEmpty(toy.Name) == false && 
-                    toyDistributionProblem.Toys.Items.SingleOrDefault(availableToy => availableToy.Name == toy.Name) != null));
+                    toyDistributionProblem.Toys.SingleOrDefault(availableToy => availableToy.Name == toy.Name) != null));
 
             var santa = new Santa();
             var toyDistributions = santa.DistributePresentsToChildren(toyDistributionProblem);
@@ -57,7 +57,7 @@ namespace VerticaDevXmas2019
         {
             var backendService = new BackendService();
 
-            backendService.GetReindeerLocations(out var christmasProject, out var reindeerLocations);
+            var (christmasProject, reindeerLocations) = backendService.GetReindeerLocations();
 
             christmasProject.Should().NotBeNull();
             reindeerLocations.Distinct().Count().Should().Be(8);
